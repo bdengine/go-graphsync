@@ -15,8 +15,8 @@ import (
 	"github.com/ipfs/go-graphsync/ipldutil"
 	"github.com/ipfs/go-graphsync/message/ipldbind"
 	pb "github.com/ipfs/go-graphsync/message/pb"
-	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/dagcbor"
+	"github.com/ipld/go-ipld-prime/datamodel"
 	"github.com/ipld/go-ipld-prime/node/bindnode"
 	pool "github.com/libp2p/go-buffer-pool"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -361,7 +361,15 @@ func (mh *MessageHandler) fromIPLD(ibm *ipldbind.GraphSyncMessage) (GraphSyncMes
 		if err != nil {
 			return GraphSyncMessage{}, err
 		}
-		requests[id] = newRequest(id, *req.Root, *req.Selector, graphsync.Priority(req.Priority), req.Cancel, req.Update, nil)
+		root := cid.Undef
+		if req.Root != nil {
+			root = *req.Root
+		}
+		var selector datamodel.Node
+		if req.Selector != nil {
+			selector = *req.Selector
+		}
+		requests[id] = newRequest(id, root, selector, graphsync.Priority(req.Priority), req.Cancel, req.Update, nil)
 	}
 
 	responses := make(map[graphsync.RequestID]GraphSyncResponse, len(ibm.Responses))
@@ -415,7 +423,7 @@ func (mh *MessageHandler) newMessageFromProtoV11(pbm *pb.Message) (GraphSyncMess
 			}
 		}
 
-		var selector ipld.Node
+		var selector datamodel.Node
 		if !req.Cancel && !req.Update {
 			selector, err = ipldutil.DecodeNode(req.Selector)
 			if err != nil {
@@ -492,7 +500,7 @@ func (mh *MessageHandler) newMessageFromProtoV1(p peer.ID, pbm *pb.Message_V1_0_
 			}
 		}
 
-		var selector ipld.Node
+		var selector datamodel.Node
 		if !req.Cancel && !req.Update {
 			selector, err = ipldutil.DecodeNode(req.Selector)
 			if err != nil {
